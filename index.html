@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="法考追踪">
+<meta name="theme-color" content="#0d0d0f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>法考错题追踪</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0d0f; --surface: #141416; --border: #1e1e20; --border-dim: #222;
+    --text: #e8e4dc; --muted: #888; --faint: #555; --vfaint: #444;
+    --red: #e85d4a; --orange: #e8944a; --blue: #4a90d9; --green: #4ab88a;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'PingFang SC', 'Hiragino Sans GB', serif;
+    min-height: 100vh; padding-bottom: 40px;
+  }
+  .header {
+    border-bottom: 1px solid var(--border-dim); padding: 20px 24px 0;
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  .header-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .header-label { font-size: 11px; letter-spacing: 4px; color: var(--faint); text-transform: uppercase; font-family: monospace; }
+  .header-title { font-size: 18px; font-weight: 700; }
+  .header-rate { margin-left: auto; font-size: 12px; font-family: monospace; }
+  .tabs { display: flex; margin-top: 8px; }
+  .tab {
+    background: none; border: none; cursor: pointer; padding: 8px 16px; font-size: 13px;
+    border-bottom: 2px solid transparent; font-family: inherit; color: var(--faint); transition: all 0.2s;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--red); }
+  .main { padding: 24px; max-width: 520px; margin: 0 auto; }
+  .subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .subject-btn {
+    background: var(--surface); border: 1px solid var(--border-dim); border-radius: 6px;
+    padding: 8px 12px; cursor: pointer; font-size: 13px; font-family: inherit;
+    text-align: left; color: var(--faint); display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .section-label { font-size: 11px; color: var(--faint); letter-spacing: 2px; display: block; margin-bottom: 6px; }
+  .topic-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .topic-pill {
+    background: var(--surface); border: 1px solid var(--border-dim); border-radius: 20px;
+    padding: 4px 12px; cursor: pointer; font-size: 12px; font-family: inherit; color: var(--faint); transition: all 0.15s;
+  }
+  .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .field label { font-size: 11px; color: var(--faint); letter-spacing: 2px; display: block; margin-bottom: 4px; }
+  .field input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border-dim);
+    border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 15px; font-family: inherit; outline: none;
+  }
+  .note-field { margin-bottom: 16px; }
+  .note-field input { font-size: 13px; }
+  .rate-preview { margin-bottom: 12px; padding: 10px 14px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); }
+  .rate-preview span { font-size: 12px; color: var(--muted); }
+  .rate-num { font-size: 20px; font-weight: 700; font-family: monospace; }
+  .submit-btn {
+    width: 100%; padding: 13px; background: var(--surface); border: 1px solid #333;
+    border-radius: 8px; cursor: pointer; color: var(--text); font-size: 14px;
+    font-family: inherit; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .submit-btn.saved { background: #1a3a1a; border-color: var(--green); color: var(--green); }
+  .stat-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 12px; text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 700; font-family: monospace; }
+  .stat-lbl { font-size: 10px; color: var(--faint); margin-top: 2px; letter-spacing: 1px; }
+  .stats-label { font-size: 11px; color: var(--faint); letter-spacing: 3px; margin-bottom: 12px; }
+  .bar-row { margin-bottom: 10px; }
+  .bar-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .bar-track { height: 4px; background: #1a1a1c; border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+  .weak-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; margin-bottom: 6px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px; border-left-width: 3px;
+  }
+  .history-count { font-size: 11px; color: var(--vfaint); margin-bottom: 12px; font-family: monospace; }
+  .history-item { padding: 12px 14px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; border-left-width: 3px; }
+  .history-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .history-meta { display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+  .history-meta span { font-size: 11px; font-family: monospace; color: var(--muted); }
+  .clear-btn { margin-top: 12px; width: 100%; padding: 10px; background: none; border: 1px solid #2a1a1a; border-radius: 6px; cursor: pointer; color: #5a3030; font-size: 12px; font-family: inherit; }
+  .empty { text-align: center; color: var(--vfaint); padding: 60px 0; font-size: 14px; line-height: 2; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .install-banner {
+    background: #1a2a1a; border: 1px solid #2a4a2a; border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: #6ab88a;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-top">
+    <span class="header-label">FAKAO</span>
+    <span class="header-title">错题追踪</span>
+    <span class="header-rate" id="headerRate"></span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('log')">记录</button>
+    <button class="tab" onclick="switchTab('stats')">分析</button>
+    <button class="tab" onclick="switchTab('history')">历史</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="view active" id="view-log">
+    <div class="install-banner" id="installBanner">
+      💡 在Safari中点击分享按钮 → 添加到主屏幕，即可离线使用
+    </div>
+    <div class="subject-grid" id="subjectGrid"></div>
+    <div>
+      <label class="section-label">考点 / 板块</label>
+      <div class="topic-pills" id="topicPills"></div>
+    </div>
+    <div class="input-grid">
+      <div class="field"><label>做题数</label><input type="number" min="1" id="inputTotal" placeholder="例：20"></div>
+      <div class="field"><label>错题数</label><input type="number" min="0" id="inputWrong" placeholder="例：8"></div>
+    </div>
+    <div class="note-field field">
+      <label>备注（可选）</label>
+      <input type="text" id="inputNote" placeholder="例：正犯概念还是模糊">
+    </div>
+    <div class="rate-preview" id="ratePreview" style="display:none">
+      <span>错误率：</span><span class="rate-num" id="rateNum"></span>
+    </div>
+    <button class="submit-btn" id="submitBtn" onclick="submitRecord()">记录</button>
+  </div>
+
+  <div class="view" id="view-stats"><div id="statsContent"></div></div>
+  <div class="view" id="view-history"><div id="historyContent"></div></div>
+</div>
+
+<script>
+const SUBJECTS = [
+  { id:"criminal", label:"刑法", color:"#e85d4a" },
+  { id:"civil", label:"民法", color:"#4a90d9" },
+  { id:"procedure_criminal", label:"刑诉", color:"#e8944a" },
+  { id:"procedure_civil", label:"民诉", color:"#4ab5d9" },
+  { id:"commercial", label:"商法", color:"#9b59b6" },
+  { id:"administrative", label:"行政法", color:"#27ae60" },
+  { id:"theory", label:"理论法", color:"#8e8e8e" },
+  { id:"three_national", label:"三国法", color:"#c0392b" },
+];
+const TOPICS = {
+  criminal:["犯罪构成","故意/过失","违法阻却","未完成形态","共同犯罪","罪数","财产犯罪","人身犯罪","职务犯罪","单位犯罪","刑罚论","被害人承诺","其他"],
+  civil:["民事主体","法律行为","代理","物权","合同总则","合同各论","侵权责任","婚姻家庭","继承","其他"],
+  default:["基础理论","程序规则","重点条文","其他"]
+};
+const KEY = "fakao_v1";
+let records = [];
+let state = { subject:"criminal", topic:"" };
+
+function load() { try { records = JSON.parse(localStorage.getItem(KEY)||"[]"); } catch { records=[]; } }
+function save() { localStorage.setItem(KEY, JSON.stringify(records)); }
+function subj(id) { return SUBJECTS.find(s=>s.id===id); }
+function colorRate(r) { return r>40?"#e85d4a":r>20?"#e8944a":"#4ab88a"; }
+function fmtDate(iso) { const d=new Date(iso); return `${d.getMonth()+1}/${d.getDate()}`; }
+function getTopics(id) { return TOPICS[id]||TOPICS.default; }
+
+function renderSubjects() {
+  document.getElementById("subjectGrid").innerHTML = SUBJECTS.map(s=>`
+    <button class="subject-btn" style="${state.subject===s.id?`background:${s.color}22;border-color:${s.color};color:${s.color}`:''}" onclick="selectSubject('${s.id}')">
+      <span class="dot" style="background:${s.color}"></span>${s.label}
+    </button>`).join("");
+}
+function selectSubject(id) { state.subject=id; state.topic=""; renderSubjects(); renderTopics(); updatePreview(); }
+
+function renderTopics() {
+  const color = subj(state.subject).color;
+  document.getElementById("topicPills").innerHTML = getTopics(state.subject).map(t=>`
+    <button class="topic-pill" style="${state.topic===t?`background:${color}33;border-color:${color};color:${color}`:''}" onclick="selectTopic('${t}')">${t}</button>`).join("");
+}
+function selectTopic(t) { state.topic=t; renderTopics(); }
+
+function updatePreview() {
+  const total=parseInt(document.getElementById("inputTotal").value);
+  const wrong=parseInt(document.getElementById("inputWrong").value);
+  const preview=document.getElementById("ratePreview");
+  if(!isNaN(total)&&!isNaN(wrong)&&total>0&&wrong<=total) {
+    const rate=Math.round(wrong/total*100);
+    preview.style.display="block";
+    document.getElementById("rateNum").textContent=rate+"%";
+    document.getElementById("rateNum").style.color=colorRate(rate);
+  } else { preview.style.display="none"; }
+}
+document.getElementById("inputTotal").addEventListener("input",updatePreview);
+document.getElementById("inputWrong").addEventListener("input",updatePreview);
+
+function submitRecord() {
+  const total=parseInt(document.getElementById("inputTotal").value);
+  const wrong=parseInt(document.getElementById("inputWrong").value);
+  const note=document.getElementById("inputNote").value;
+  if(!state.topic||isNaN(total)||isNaN(wrong)||wrong>total||total<=0) return;
+  records.unshift({id:Date.now(),date:new Date().toISOString(),subject:state.subject,topic:state.topic,total,wrong,note});
+  save(); updateHeaderRate();
+  document.getElementById("inputTotal").value="";
+  document.getElementById("inputWrong").value="";
+  document.getElementById("inputNote").value="";
+  state.topic=""; renderTopics(); updatePreview();
+  const btn=document.getElementById("submitBtn");
+  btn.textContent="✓ 已记录"; btn.classList.add("saved");
+  setTimeout(()=>{btn.textContent="记录";btn.classList.remove("saved");},1800);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",["log","stats","history"][i]===tab));
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+tab).classList.add("active");
+  if(tab==="stats") renderStats();
+  if(tab==="history") renderHistory();
+}
+
+function updateHeaderRate() {
+  const total=records.reduce((a,r)=>a+r.total,0);
+  const wrong=records.reduce((a,r)=>a+r.wrong,0);
+  const el=document.getElementById("headerRate");
+  if(total>0){const rate=Math.round(wrong/total*100);el.textContent="总错误率 "+rate+"%";el.style.color=colorRate(rate);}
+  else el.textContent="";
+}
+
+function renderStats() {
+  const el=document.getElementById("statsContent");
+  if(!records.length){el.innerHTML='<div class="empty">还没有记录</div>';return;}
+  const total=records.reduce((a,r)=>a+r.total,0);
+  const wrong=records.reduce((a,r)=>a+r.wrong,0);
+  const overall=Math.round(wrong/total*100);
+  const bySubject=SUBJECTS.map(s=>{
+    const recs=records.filter(r=>r.subject===s.id);
+    const t=recs.reduce((a,r)=>a+r.total,0);
+    const w=recs.reduce((a,r)=>a+r.wrong,0);
+    return {...s,total:t,wrong:w,rate:t>0?Math.round(w/t*100):null};
+  }).filter(s=>s.total>0).sort((a,b)=>b.rate-a.rate);
+  const topicMap={};
+  records.forEach(r=>{const k=r.subject+"__"+r.topic;if(!topicMap[k])topicMap[k]={subject:r.subject,topic:r.topic,total:0,wrong:0};topicMap[k].total+=r.total;topicMap[k].wrong+=r.wrong;});
+  const weak=Object.values(topicMap).map(t=>({...t,rate:Math.round(t.wrong/t.total*100)})).filter(t=>t.total>=5).sort((a,b)=>b.rate-a.rate).slice(0,6);
+  el.innerHTML=`
+    <div class="stat-cards">
+      <div class="stat-card"><div class="stat-val" style="color:#4a90d9">${total}</div><div class="stat-lbl">总做题</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:#e85d4a">${wrong}</div><div class="stat-lbl">总错题</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:${colorRate(overall)}">${overall}%</div><div class="stat-lbl">错误率</div></div>
+    </div>
+    <div class="stats-label">各科错误率</div>
+    ${bySubject.map(s=>`<div class="bar-row"><div class="bar-header"><span style="font-size:13px;color:${s.color}">${s.label}</span><span style="font-size:12px;font-family:monospace;color:${colorRate(s.rate)}">${s.rate}% <span style="color:#444">(${s.wrong}/${s.total})</span></span></div><div class="bar-track"><div class="bar-fill" style="width:${s.rate}%;background:${s.color}"></div></div></div>`).join("")}
+    ${weak.length?`<div class="stats-label" style="margin-top:24px">薄弱考点 <span style="color:#333">（≥5题）</span></div>${weak.map(t=>{const c=subj(t.subject)?.color||"#888";const l=subj(t.subject)?.label||t.subject;return`<div class="weak-item" style="border-left-color:${c}"><div><span style="font-size:12px;color:${c}">${l}</span><span style="font-size:12px;color:#555;margin:0 6px">·</span><span style="font-size:13px">${t.topic}</span></div><span style="font-size:13px;font-family:monospace;font-weight:700;color:${colorRate(t.rate)}">${t.rate}%</span></div>`;}).join("")}`:""}`;
+}
+
+function renderHistory() {
+  const el=document.getElementById("historyContent");
+  if(!records.length){el.innerHTML='<div class="empty">暂无记录</div>';return;}
+  el.innerHTML=`<div class="history-count">共 ${records.length} 条记录</div>${records.map(r=>{
+    const c=subj(r.subject)?.color||"#888";const l=subj(r.subject)?.label||r.subject;const rate=Math.round(r.wrong/r.total*100);
+    return`<div class="history-item" style="border-left-color:${c}"><div class="history-top"><div><span style="font-size:12px;color:${c}">${l}</span><span style="font-size:12px;color:#555;margin:0 6px">·</span><span style="font-size:13px;color:#ccc">${r.topic}</span></div><span style="font-size:14px;font-weight:700;font-family:monospace;color:${colorRate(rate)}">${rate}%</span></div><div class="history-meta"><span>${r.wrong}/${r.total} 错</span><span>${fmtDate(r.date)}</span>${r.note?`<span style="font-style:italic;color:#666">${r.note}</span>`:""}</div></div>`;
+  }).join("")}<button class="clear-btn" onclick="clearAll()">清空所有记录</button>`;
+}
+
+function clearAll() { if(confirm("确认清空所有记录？")){records=[];save();updateHeaderRate();renderHistory();} }
+
+// Show install banner if not standalone
+if(!window.navigator.standalone && /iPhone|iPad/.test(navigator.userAgent)) {
+  document.getElementById("installBanner").style.display="block";
+}
+
+// Register service worker
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+load(); renderSubjects(); renderTopics(); updateHeaderRate();
+</script>
+</body>
+</html>
